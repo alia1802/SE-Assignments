@@ -1,53 +1,79 @@
-'''
-Author: Alia Bandarkar
+"""
+    This is a Object Oriented Program to send OTP to the given email id using python smtplib
 
-'''
-
-# THIS IS MAIN FILE I NAMED AS Send_OTP_Using_Mail_2, this is version 2.
-import GetPass #Importing Password,Email From another file.
+    Author: Alia Bandarkar
+"""
+from dotenv import load_dotenv, find_dotenv
+from os import environ as env
 import random
-import smtplib #This library is used for sending message using email.
-import time
-password = GetPass.pwd
-Sender_Mail = GetPass.email
-def EmailValidation(Email):
-    True_Str1,True_Str2 = "yahoo" in Email,"gmail" in Email # This will store boolean values.
-    if (True_Str1 or True_Str2) and( "@" in Email and "." in Email and "com" in Email):
-        print("\nNo Error Found in Email!")
-    else:
-        raise AssertionError("Please enter valid Domain Name!")
-def genrateOtp():
-    Length = int(input("Enter Length of OTP: "))
-    otp = ''.join([str(random.randint(0,9)) for i in range(Length)]) #Generated OTP using
-    random.randint()
-    return otp
-def sendMail(Name,Email,otp):
-    server = smtplib.SMTP('smtp.gmail.com',587) #Created gmail's server, and connected to gmail API
-    # Adding transfer layered security
-    server.starttls()
-    server.login(Sender_Mail,password) # Email, App password are inserted.
-    if True:
-        msg = f"Subject: Sending Mail using Python (smtplib)!\n\nHello +{Name}+, Your OTP is{str(otp)}+\n\n You Have 30 Seconds to enter OTP!" 
-    #Inserted Sender email ID, Recevier email ID. 
-        server.sendmail(Sender_Mail,Email,msg)
-        print("Email Sent!")
-        server.quit()
-def validateOTP(OT):
-# This function will check entered otp is valid or not!
-# This function also have Time Limit of 30 Sec
-    test_time = 30
-    beg_time = time.time()
-    now_time = time.time()
-    otp = OT
-    input_otp = 0
-    if input_otp == otp:
-        pass
-    else:
-        while input_otp != otp and int(now_time)-int(beg_time) <= test_time:
-            if now_time-beg_time <=test_time:
-                input_otp = input("Enter Valid OTP: ")
-                now_time = time.time()
-                if input_otp == otp:
-                    print("OTP IS VALID!")
-                else:
-                    raise AssertionError("Out Of Time!")
+from re import fullmatch
+import smtplib
+load_dotenv(find_dotenv())
+
+
+class OTPService:
+    def __init__(self, email, passwd):
+        self._email = email
+        self._passwd = passwd
+        self._server = smtplib.SMTP('smtp.gmail.com', 587)
+        self._OTP = ""
+
+    def sendMail(self, receiver):
+        msg = '\n\nThe One Time Password(OTP) is: ' + self._OTP
+        self._server.sendmail(self._email, receiver, msg)
+        print("\n\tOTP is sent to the given email address")
+
+    def initiateServer(self):
+        self._server.starttls()
+        self._server.login(self._email, self._passwd)
+        print("\nSMTP server is initialized and running....")
+
+    def closeServer(self):
+        self._server.quit()
+        print("\nSMTP server closed.")
+
+    def generateOTP(self, length):
+        if length < 4 or length > 6:
+            print("The length of the OTP must be at-least 4 and at-max 6")
+            return False
+
+        digits = "0123456789"
+        otp = random.sample(digits, length)
+        self._OTP = "".join(otp)
+
+    def validateOTP(self, otp):
+        if self._OTP != "" and self._OTP == otp:
+            print("Given OTP was correct")
+        else:
+            print("Given OTP was incorrect")
+        
+
+
+
+if __name__ == "__main__":
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+
+    EMAIL = env.get('EMAIL')
+    EMAIL_PASSWD = env.get('PASSWORD')
+    LENGTH = int(env.get("OTP_LENGTH"))
+
+    otpSender = OTPService(EMAIL, EMAIL_PASSWD)
+    otpSender.initiateServer()
+
+
+    # Taking Input
+    print("Please Enter your Email to receive OTP")
+    receiver_email = input("Email: ")
+
+    while fullmatch(regex, receiver_email) == None:
+        print("Please enter a valid email address")
+        receiver_email = input("Email: ")
+
+    otpSender.generateOTP(LENGTH)
+    otpSender.sendMail(receiver_email)
+
+    print("Please enter the OTP to proceed")
+    otp = input("OTP: ")
+    otpSender.validateOTP(otp)
+
+    otpSender.closeServer()
